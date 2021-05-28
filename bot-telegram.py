@@ -12,8 +12,8 @@ def get_public_urls():
         if response.status_code != 200:
             return None
         public_urls = []
-        for tunnel in response.get('tunnels'):
-            public_urls.append(tunnel.get('public_url'))
+        for tunnel in response.tunnels:
+            public_urls.append(tunnel.public_url)
         return public_urls
     except Exception:
         logging.error("Exception occured", exc_info=True)
