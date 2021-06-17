@@ -36,6 +36,7 @@ def change_redirect_file():
     try:
         public_urls = get_public_urls()
         repo = Repo(PATH_OF_GIT_REPO)
+        repo.remotes.origin.pull()
         for x in public_urls:
             tunnel_name = x.split(":")[0]
             url = x.split(" : ")[1]
