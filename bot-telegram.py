@@ -48,7 +48,7 @@ def change_redirect_file():
         origin = repo.remote(name='origin')
         origin.push()
     except Exception as e:
-        print('Some error occured while pushing the code'+e)
+        logging.error("Exception occured", exc_info=True)
 
 logging.basicConfig(filename='bot.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                      level=logging.INFO)
