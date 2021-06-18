@@ -1,1 +1,6 @@
 bot.py
+bot-telegram.py
+NgrokLinkify.log
+build/
+dist/
+.vscode/
