@@ -3,6 +3,8 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 import argparse
+import os
+import sys
 import requests
 from git import Repo
 from telegram.ext import CommandHandler, Updater
@@ -78,10 +80,12 @@ class PublishURLs:
                     file = self.git_config.pages_file_content.format(tunnel_name,url)
                     f.write(file)
                 repo.index.add([file_name])
-            repo.index.commit(self.git_config.commit_comment.format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+            commit_msg = repo.index.commit(self.git_config.commit_comment.format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+            logging.info(commit_msg)
             origin = repo.remote(name='origin')
-            origin.push()
-        except Exception as e:
+            push_msg = origin.push()
+            logging.info(push_msg)
+        except Exception:
             logging.error("Exception occured", exc_info=True)
 
     def parse_config(self, file="./config.ini"):
@@ -90,6 +94,8 @@ class PublishURLs:
         Args:
             file (str, optional): Path to the configuration file. Defaults to "./config.ini".
         """
+        if not os.path.isfile(file):
+            sys.exit("No config file found at {0}. Exiting!".format(file))
         config = configparser.RawConfigParser()
         config.read(file)
         if 'Default' in config:
@@ -113,7 +119,7 @@ class PublishURLs:
         dispatcher.add_handler(start_handler)
         updater.start_polling()
 
-    def __init__(self, run_telegram_bot, update_github_pages, config_file = None) -> None:
+    def __init__(self, run_telegram_bot, update_github_pages, config_file) -> None:
         """Initialize the NgrokLinkify class
 
         Args:
@@ -131,10 +137,10 @@ class PublishURLs:
 def main():
     parser = argparse.ArgumentParser(description="A utility to expose your ngrok tunnels using Github Pages and/or a telegram bot")
     parser.add_argument("--config",default="~/linkify.config",help="Path to the configuration file")
-    parser.add_argument("--runTelegram", default=True, help="True if you want the telegram bot to run" )
-    parser.add_argument("--updateGithubPages", default=True, help="True if you want to expose your public URLs using redirection from github pages" )
+    parser.add_argument("--exclude-telegram", action='store_false', help="If you don't want the telegram bot to run" )
+    parser.add_argument("--exclude-gh-pages", action='store_false', help="If you don't want to update github pages repo" )
     args = parser.parse_args()
-    PublishURLs(args.runTelegram, args.updateGithubPages, args.config)
+    PublishURLs(args.exclude_telegram, args.exclude_gh_pages, args.config)
 
 if __name__ == "__main__":
     main()
