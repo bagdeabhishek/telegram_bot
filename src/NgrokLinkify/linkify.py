@@ -27,7 +27,7 @@ class DefaultConfig:
     ngrok_url : str
     log_file : str
 
-class PublishURLs:
+class Linkify:
     """Use this class to expose your ngrok tunnnels in a easy to use way. You can either start a telegram bot to return current public urls or use github pages to redirect to the tunnel. You can setup this script as a systemd service to do this at every boot. 
 
     """
@@ -119,7 +119,7 @@ class PublishURLs:
         dispatcher.add_handler(start_handler)
         updater.start_polling()
 
-    def __init__(self, run_telegram_bot, update_github_pages, config_file) -> None:
+    def __init__(self, start_telegram_bot, update_github_pages, config_file) -> None:
         """Initialize the NgrokLinkify class
 
         Args:
@@ -132,7 +132,7 @@ class PublishURLs:
         self.set_logger()
         if update_github_pages:
             self.commit_URL_github_pages()
-        if run_telegram_bot:
+        if start_telegram_bot:
             self.init_telegram_bot()
 def main():
     parser = argparse.ArgumentParser(description="A utility to expose your ngrok tunnels using Github Pages and/or a telegram bot")
@@ -140,7 +140,7 @@ def main():
     parser.add_argument("--exclude-telegram", action='store_false', help="If you don't want the telegram bot to run" )
     parser.add_argument("--exclude-gh-pages", action='store_false', help="If you don't want to update github pages repo" )
     args = parser.parse_args()
-    PublishURLs(args.exclude_telegram, args.exclude_gh_pages, args.config)
+    Linkify(args.exclude_telegram, args.exclude_gh_pages, args.config)
 
 if __name__ == "__main__":
     main()

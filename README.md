@@ -1,43 +1,122 @@
-# Ngrok Telegram bot
+# NgrokLinkify
 
-**Read [this](https://www.abagade.com/ngrok/) blog for a more detailed guide**
+A tool to expose your Ngrok URLs in an easy-to-access way. This tool uses the Ngrok free plan to get public URLs for your internal services and expose them. You can either use a telegram bot to get the public URLs or use redirection on Github pages to get a permanent URL to access your tunnels.
 
-This bot works along with [Ngrok](https://ngrok.com/). Ngrok is a tool that is used to expose your local service to the internet. A simple use case would be a local web application you created that you want your friends to check out. 
-The tool comes with a free version which is okay for private use but the major limitation is you cannot choose a submdomain for your end point. To solve this problem I've come up with a simple solution
-## Solution
-Ngrok provides an API to query the information from your system. What this bot does, is it queries the Ngrok API end point to get the the public URLs and returns the formatted output as a text message. You can add this bot to any telegram group so your friends can get the URL directly. 
-## How to run this bot
-1. Create a telegram bot following [this](https://core.telegram.org/bots) guide
-2. Copy the access token, you'll require this token to respond to this bot.
-3. Set this token as an Environment variable using command `export BOT_TOKEN="<access-token>"` command or just replace the variable with actual value on line 31
-4. Once you set the access token run this python script using command similar to `python3 bot-telegram.py`
-5. Now once this bot is accepting connections you can just type `/url` command to get a list of all the public URLs along with the tunnel name. 
 
-<div align="center">
-    <img src="ss.jpg" alt="drawing" width="400"/>
-</div>
+- Expose your tunnels public URL conveniently for your friends
+- No need for setting up port forwarding on your system
+- Relatively safe, no hardening needed
+- Two choices to expose URLs: Telegram bot and Github pages
+- Setup as a systemd service to do this on boot
 
-## URL redirects using github pages
-I've added additional functionality to setup redirects directly using github pages. This means you will have a fixed url which will then transparently redirect to the latest ngrok tunnel URL. 
-### Setup JekyllRedirectFrom
-You can go with a simple HTTP or JS redirect using github pages but using JekyllRedirectFrom limits the amount of text you have to write. You'll need to enable JekyllRedirectFrom on github pages following the instructions mentioned [here](https://github.com/jekyll/jekyll-redirect-from). Once you do that you can setup redirect simply using following snippet. 
-```md
----
-title: jellyfin 
-redirect_to: https://tunnel.in.ngrok.io
----
+## Related Libraries
+
+- [Ngrok](https://ngrok.com/)
+- [PyGitHub](https://github.com/PyGithub/PyGithub)
+
+## Installation
+### Dependencies
+
+1. You'll have to install Ngrok by downloading it from [here](https://ngrok.com/download). For ease of use you can create a config file similar to the one below
+```yaml
+authtoken: TOKEN_ID 
+region: in # Set the region to closest one from your location
+log_level: info
+log_format: json
+log: /var/log/ngrok.log
+tunnels:
+        jupyter: # Name of the tunnel
+                proto: http
+                addr: 1234 # Port number of the service
+                bind_tls: true
+        file-download:
+                proto: http
+                addr: 5678
+                bind_tls: true
+        heimdall:
+                proto: http
+                addr: 1111
+                bind_tls: true
 ```
-### Push a commit with updated url at every boot
-I've included the code to push the changed ngrok urls once script is invoked. You can refer change_redirect_file method in bot-telegram.py file to understand how we push the changed urls. You'll also need to setup ssh keys for your github accounts, this will make it easier to push the commits without putting username passwrod everytime. Follow [this](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh) guide to setup SSH keys and set the upstream branch to use ssh by running `git remote set-url origin git@github.com:<Username>/<Project>.git` command.
+The name of your tunnel will be the path to the redirect link on Github pages. For ex. to visit the jupyter service you need to visit `https://<github-username>.github.io/jupyter`. You'll be redirected to the tunnel and should be able access your service. 
 
-Change the PATH_OF_GIT_REPO variable to point to your repo location on system and you are set.
-
-### Modify the systemd service to run the above script everytime ngrok restarts
-Once you do the above changes you'll also need to take care f the case when the ngrok service is restarted. To make sure our telegram_bot service restarts when ngrok service restarts include the following parameter in unit section. 
+2. You'll also need to install these dependencies
+```sh
+pip install PyGithub python-telegram-bot
+```
+### Install NgrokLinkify
+```sh
+pip install NgrokLinkify
+```
+Once you install the tool you'll need to create a config file. The basic structure of the config file is available in the package as example-cfg.ini. You can copy the file and edit it according to your system. 
 ```ini
-PartOf=ngrok.service
+[Default]
+NgrokUrl = http://127.0.0.1:4040/api/tunnels #API endpoint for Ngrok, this is the default value
+LogFile = /var/log/NgrokLinkify.log #Location of the Log File
+[Git]
+RepoPath = /path/to/github-pages/repo #Change this to the path to your local git pages repo
+CommitComment = Committed URL at {0} # Commit Message when committing Github Pages
+PagesContent = ---\ntitle: {0}\nredirect_to: {1}\n---\n #The content of the redirect file, I use https://github.com/jekyll/jekyll-redirect-from. You can use raw HTML by following https://stackoverflow.com/questions/5411538/redirect-from-an-html-page and replacing the URL by {0} 
+[Telegram]
+FailureMsg = The server is not running currently! Ping @username #The Failure message to return when Ngrok isn't running
+SuccessMsg = The public urls are \n ---------------------- \n{0} #The success message, {0} here contains tunnel name and public url
+BotToken = 123123123 #The Bot token for telegram bot
 ```
 
+### Setup github repo
+To ensure that you can update githuba pages without entering username or password. Enable ssh login to github by following this [guide](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh). Once done create and pull your github pages repo to the location mentioned in the config file. 
 
-Once you do the above steps your friends can easily reach your service by visiting the your <github-pages-url>/tunnelname
+Once you've enabled ssh access to your repo, set the upstream branch with ssh using the following command in the repo directory. Note the URL has to be a ssh url. 
+ ```bash
+git remote set-url origin git@github.com:bagdeabhishek/bagdeabhishek.github.io.git 
+```
 
+## Usage
+You can directly run the utility by using linkify command
+### Simple command line usage
+
+```sh
+linkify -config /path/to/config/file
+```
+You can choose to enable telegram bot or update the github page with redirection. use the `-h` flag to get help
+### Use it programmatically inside python script
+
+```python
+from NgrokLinkify.linkify import Linkify 
+Linkify(start_telegram_bot=False ,update_github_pages=True,config_file="/home/abhishek/linkify.ini")
+```
+## Options
+The command line utility accepts the following arguments
+###  --config CONFIG_FILE_LOCATION
+Path to the configuration file
+
+### --exclude-telegram  
+Don't run telegram bot 
+
+### --exclude-gh-pages 
+Do not update github pages
+
+## Persist the services using systemd
+The package contains example service file for both NgrokLinkify and Ngrok. You can copy them to `/etc/systemd/system/` location.
+
+### Ngrok systemd service file
+```ini
+[Unit]                                                                                                                  Description=Ngrok                                                                                                       After=network.service                                                                                                                                                                                                                           [Service]                                                                                                               Type=simple                                                                                                             User=user-name                                                                                                           WorkingDirectory=/home/abhishek                                                                                         ExecStart=/path/to/ngrok start --all --config=".ngrok2/ngrok.yml"                                       Restart=on-failure                                                                                                                                                                                                                              [Install]                                                                                                               WantedBy=multi-user.target 
+```
+### Enable at boot
+Create save this file as `ngrok.service` in `/etc/systemd/system/` location. Run the following commands to enable Ngrok at boot
+```sh
+sudo systemctl daemon-reload;
+sudo systemctl enable ngrok.service; 
+```
+
+### NgrokLinkify systemd service
+You can run NgrokLinkify as a service using the following example 
+```ini
+[Unit]                                                                                                                  Description=Telegram bot to return URLs                                                                                 After=ngrok.service network.target network-online.target                                                                PartOf=ngrok.service                                                                                                                                                                                                                            [Service]                                                                                                               Type=simple                                                                                                             User=username                                                                                                           ExecStart=/home/username/miniconda3/bin/linkify --config /home/username/linkify.ini                Restart=on-failure                                                                                                                                                                                                                              [Install]                                                                                                               WantedBy=multi-user.target 
+```
+Save this file as `NgrokLinkify.service` in `/etc/systemd/system/` location. Enable the service at boot using the follwing commands
+```sh
+sudo systemctl daemon-reload;
+sudo systemctl enable ngrok.service; 
+```
