@@ -1,6 +1,6 @@
-[![PyPI](https://img.shields.io/pypi/v/NgrokLinkify)](https://pypi.org/project/NgrokLinkify)
 
-# NgrokLinkify
+
+# NgrokLinkify [![PyPI](https://img.shields.io/pypi/v/NgrokLinkify)](https://pypi.org/project/NgrokLinkify)
 
 A tool to expose your Ngrok URLs in an easy-to-access way. This tool uses the Ngrok free plan to get public URLs for your internal services and expose them. You can either use a telegram bot to get the public URLs or use redirection on Github pages to get a permanent URL to access your tunnels.
 
